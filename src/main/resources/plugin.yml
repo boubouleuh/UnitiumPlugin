@@ -1,0 +1,15 @@
+name: UnitiumPlugin2
+version: '${project.version}'
+main: fr.bouboule.unitiumplugin2.UnitiumPlugin2
+load: STARTUP
+commands:
+  country:
+    description: Command to manage country
+    aliases:
+      - pays
+      - c
+      - p
+    permission: command.country
+    permission-message: §4You do not have permission!
+    usage: §4/<command> <subcommand>
+
