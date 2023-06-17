@@ -19,10 +19,6 @@ public class JoinCountry {
     }
 
     public void command(CommandSender sender) {
-        if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Cette commande doit être exécutée par un joueur.");
-            return;
-        }
 
         Player player = (Player) sender;
         UUID playerUUID = player.getUniqueId();
@@ -41,7 +37,7 @@ public class JoinCountry {
                 // Rejoindre le pays du joueur qui a envoyé l'invitation
                 String countryName = databaseManager.getCountryName(inviterUUID);
                 int countryId = databaseManager.getCountryID(countryName);
-                databaseManager.addPlayerToCountry(playerUUID, countryId, 0);
+                databaseManager.addPlayerToCountry(playerUUID, countryId, 1);
 
                 invitationManager.removeInvitation(playerUUID);
 

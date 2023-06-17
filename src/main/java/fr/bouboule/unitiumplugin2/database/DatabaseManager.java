@@ -1,5 +1,9 @@
 package fr.bouboule.unitiumplugin2.database;
 
+import fr.bouboule.unitiumplugin2.permissions.country.Perms;
+import org.bukkit.Bukkit;
+import org.bukkit.Chunk;
+
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -94,6 +98,69 @@ public class DatabaseManager {
         }
     }
 
+    public void addClaimedChunk(int countryId, Chunk chunk) {
+        String query = "INSERT INTO ClaimedChunks (country_id, world_name, x, z) VALUES (?, ?, ?, ?)";
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setInt(1, countryId);
+            statement.setString(2, chunk.getWorld().getName());
+            statement.setInt(3, chunk.getX());
+            statement.setInt(4, chunk.getZ());
+            statement.executeUpdate();
+        } catch (SQLException e) {
+            System.out.println("Failed to add claimed chunk: " + e.getMessage());
+        }
+    }
+
+    public boolean isChunkClaimed(Chunk chunk) {
+        String query = "SELECT COUNT(*) AS count FROM ClaimedChunks WHERE x = ? AND z = ? AND world_name = ?";
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setInt(1, chunk.getX());
+            statement.setInt(2, chunk.getZ());
+            statement.setString(3, chunk.getWorld().getName());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    int count = resultSet.getInt("count");
+                    return count > 0;
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Failed to check if chunk is claimed: " + e.getMessage());
+        }
+        return false;
+    }
+    public void removeClaimedChunk(int countryId, Chunk chunk) {
+        String query = "DELETE FROM ClaimedChunks WHERE country_id = ? AND x = ? AND z = ?";
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setInt(1, countryId);
+            statement.setInt(2, chunk.getX());
+            statement.setInt(3, chunk.getZ());
+            statement.executeUpdate();
+        } catch (SQLException e) {
+            System.out.println("Failed to remove claimed chunk: " + e.getMessage());
+        }
+    }
+
+    public List<Chunk> getClaimedChunksByCountry(int countryId) {
+        List<Chunk> claimedChunks = new ArrayList<>();
+        String query = "SELECT world_name, x, z FROM ClaimedChunks WHERE country_id = ?";
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setInt(1, countryId);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    String worldName = resultSet.getString("world_name");
+                    int x = resultSet.getInt("x");
+                    int z = resultSet.getInt("z");
+                    Chunk claimedChunk = Bukkit.getWorld(worldName).getChunkAt(x,z);
+                    claimedChunks.add(claimedChunk);
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Failed to get claimed chunks: " + e.getMessage());
+        }
+        return claimedChunks;
+    }
+
+
     public String getCountryName(UUID playerUUID) {
         try (PreparedStatement statement = connection.prepareStatement("SELECT c.name FROM Countries c LEFT JOIN CountryPlayers cp ON c.id = cp.country_id WHERE cp.player_uuid = ? OR c.leader_uuid = ?")) {
             statement.setString(1, playerUUID.toString());
@@ -155,7 +222,7 @@ public class DatabaseManager {
                 return resultSet.next();
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erreur lors de la vérification du leader du pays : " + e.getMessage());
         }
         return false;
     }
@@ -219,6 +286,9 @@ public class DatabaseManager {
 
 
     public void createCountryRank(int countryID, String rankName, List<String> permissions) {
+
+
+
         String query = "INSERT INTO CountryRanks (country_id, rank_name) VALUES (?, ?)";
 
         try (PreparedStatement statement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
@@ -231,7 +301,9 @@ public class DatabaseManager {
                 if (generatedKeys.next()) {
                     int rankID = generatedKeys.getInt(1);
                     // Ajouter les permissions au rang
-                    addCountryRankPermissions(rankID, permissions);
+                    if (permissions != null){
+                        addCountryRankPermissions(rankID, permissions);
+                    }
                 }
             }
         } catch (SQLException e) {
@@ -256,17 +328,17 @@ public class DatabaseManager {
 
     private void createDefaultCountryRanks(int countryID) {
         // Créer les rangs par défaut avec les permissions associées
+        Perms perms = new Perms(this);
         String rankName1 = "Citoyen";
-        List<String> permissions1 = Arrays.asList("permission1", "permission2");
-        createCountryRank(countryID, rankName1, permissions1);
+        createCountryRank(countryID, rankName1, null);
 
         String rankName2 = "Membre";
-        List<String> permissions2 = Arrays.asList("permission1", "permission2");
+        List<String> permissions2 = Arrays.asList(perms.buildPerm, perms.usePerm);
         createCountryRank(countryID, rankName2, permissions2);
 
         // Créer d'autres rangs par défaut si nécessaire avec leurs permissions respectives
         String rankName3 = "Officier";
-        List<String> permissions3 = Arrays.asList("permission3", "permission4");
+        List<String> permissions3 = Arrays.asList(perms.buildPerm, perms.usePerm, perms.managePerm);
         createCountryRank(countryID, rankName3, permissions3);
 
         // ...
@@ -316,6 +388,149 @@ public class DatabaseManager {
         } catch (SQLException e) {
             System.out.println("Failed to remove permission from country rank: " + e.getMessage());
         }
+    }
+
+    public boolean isPlayerInCountry(UUID playerUUID, int countryID) {
+        String query = "SELECT COUNT(*) FROM CountryPlayers WHERE player_uuid = ? AND country_id = ?";
+
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setString(1, playerUUID.toString());
+            statement.setInt(2, countryID);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    int count = resultSet.getInt(1);
+                    return count > 0;
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Failed to check if player is in country: " + e.getMessage());
+        }
+
+        return false;
+    }
+
+    public String getPlayerCountryRank(UUID playerUUID, int countryID) {
+        String query = "SELECT rank_id FROM CountryPlayers " +
+                "WHERE player_uuid = ? AND country_id = ?";
+
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setString(1, playerUUID.toString());
+            statement.setInt(2, countryID);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    int rankID = resultSet.getInt("rank_id");
+                    return getCountryRankName(rankID);
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Failed to get player country rank: " + e.getMessage());
+        }
+
+        return null;
+    }
+
+    private String getCountryRankName(int rankID) {
+        String query = "SELECT rank_name FROM CountryRanks WHERE id = ?";
+
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setInt(1, rankID);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getString("rank_name");
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Failed to get rank name: " + e.getMessage());
+        }
+
+        return null;
+    }
+
+
+    public String getLowerCountryRank(int countryID, String currentRank) {
+        String query = "SELECT rank_name FROM CountryRanks " +
+                "WHERE country_id = ? AND rank_name < ? " +
+                "ORDER BY rank_name DESC LIMIT 1";
+
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setInt(1, countryID);
+            statement.setString(2, currentRank);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getString("rank_name");
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Failed to get lower country rank: " + e.getMessage());
+        }
+
+        return null;
+    }
+
+    public String getHigherCountryRank(int countryID, String currentRank) {
+        String query = "SELECT rank_name FROM CountryRanks " +
+                "WHERE country_id = ? AND rank_name > ? " +
+                "ORDER BY rank_name ASC LIMIT 1";
+
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setInt(1, countryID);
+            statement.setString(2, currentRank);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getString("rank_name");
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Failed to get higher country rank: " + e.getMessage());
+        }
+
+        return null;
+    }
+
+    public void setCountryRank(UUID playerUUID, int countryID, String rankName) {
+        try {
+            // Récupérer l'ID du rang en fonction de son nom
+            int rankID = getCountryRankIDByName(rankName);
+
+            if (rankID == -1) {
+                System.out.println("Rank not found: " + rankName);
+                return;
+            }
+
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "UPDATE CountryPlayers SET rank_id = ? WHERE player_uuid = ? AND country_id = ?")) {
+                statement.setInt(1, rankID);
+                statement.setString(2, playerUUID.toString());
+                statement.setInt(3, countryID);
+                statement.executeUpdate();
+            }
+        } catch (SQLException e) {
+            System.out.println("Failed to set country rank: " + e.getMessage());
+        }
+    }
+
+    public int getCountryRankIDByName(String rankName) {
+        int rankID = -1;
+
+        try (PreparedStatement statement = connection.prepareStatement(
+                "SELECT id FROM CountryRanks WHERE rank_name = ?")) {
+            statement.setString(1, rankName);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    rankID = resultSet.getInt("id");
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Failed to get rank ID: " + e.getMessage());
+        }
+
+        return rankID;
     }
     //PLAYER METHODS
 

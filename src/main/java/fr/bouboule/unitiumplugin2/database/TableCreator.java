@@ -23,9 +23,21 @@ public class TableCreator {
         createCountryPermissionsTable();
         createRelationsTable();
         createWarsTable();
+        createClaimedChunksTable();
+
+        createDeleteCountryTrigger();
 
         database.disconnect();
     }
+
+
+    private void lockingMode(){
+        String pragmaQuery = "PRAGMA locking_mode = NORMAL";
+
+        executeQuery(pragmaQuery);
+
+    }
+
 
     private void createCountryTable() {
         String query = "CREATE TABLE IF NOT EXISTS Countries (" +
@@ -66,7 +78,7 @@ public class TableCreator {
     private void createRankTable() {
         String query = "CREATE TABLE IF NOT EXISTS Ranks (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                "name VARCHAR(255) NOT NULL UNIQUE," +
+                "name VARCHAR(255) NOT NULL UNIQUE" +
                 ")";
 
         executeQuery(query);
@@ -129,6 +141,32 @@ public class TableCreator {
 
         executeQuery(query);
     }
+
+    private void createClaimedChunksTable() {
+        String query = "CREATE TABLE IF NOT EXISTS ClaimedChunks (" +
+                "    id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                "    country_id INT UNSIGNED NOT NULL," +
+                "    world_name VARCHAR(255) NOT NULL," +
+                "    x INT NOT NULL," +
+                "    z INT NOT NULL," +
+                "    FOREIGN KEY (country_id) REFERENCES Countries(id) ON DELETE CASCADE" +
+                ")";
+        executeQuery(query);
+    }
+
+    private void createDeleteCountryTrigger() {
+        String query = "CREATE TRIGGER IF NOT EXISTS delete_country_trigger " +
+                "AFTER DELETE ON Countries " +
+                "FOR EACH ROW " +
+                "BEGIN " +
+                "    DELETE FROM CountryPermissions WHERE country_rank_id IN " +
+                "        (SELECT id FROM CountryRanks WHERE country_id = OLD.id); " +
+                "    DELETE FROM CountryRanks WHERE country_id = OLD.id; " +
+                "END;";
+
+        executeQuery(query);
+    }
+
 
     private void executeQuery(String query) {
         Connection connection = database.getConnection();

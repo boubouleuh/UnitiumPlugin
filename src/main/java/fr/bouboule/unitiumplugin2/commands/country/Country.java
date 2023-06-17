@@ -49,9 +49,17 @@ public class Country implements CommandExecutor {
         } else if (args[0].equalsIgnoreCase("rename")) {
             new RenameCountry(sender, args, databaseManager);
             return true;
-        } else if (args[0].equalsIgnoreCase("createrank")) {
-            new CreateRank(sender, args, databaseManager);
+        } else if (args[0].equalsIgnoreCase("promote")) {
+            new PromoteCountry(sender, args, databaseManager);
             return true;
+        } else if (args[0].equalsIgnoreCase("demote")) {
+            new DemoteCountry(sender, args, databaseManager);
+            return true;
+        } else if (args[0].equalsIgnoreCase("claim")) {
+            new ClaimCountry(sender, databaseManager);
+            return true;
+        } else if (args[0].equalsIgnoreCase("unclaim")) {
+            new UnclaimCountry(sender, databaseManager);
         }
 
         // Autres subcommands...

@@ -23,7 +23,7 @@ public class CountryTabCompleter implements TabCompleter {
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
             // Liste des subcommands disponibles pour l'autocomplétion
-            List<String> subCommands = Arrays.asList("create", "disband", "rename", "kick", "invite", "join", "leave", "createrank");
+            List<String> subCommands = Arrays.asList("create", "disband", "rename", "kick", "invite", "join", "leave", "promote", "demote", "claim", "unclaim");
 
             // Filtrer les subcommands en fonction de l'entrée partielle de l'utilisateur
             return filterStartingWith(args[0], subCommands);
