@@ -56,7 +56,7 @@ public class Country implements CommandExecutor {
             new DemoteCountry(sender, args, databaseManager);
             return true;
         } else if (args[0].equalsIgnoreCase("claim")) {
-            new ClaimCountry(sender, databaseManager);
+            new ClaimCountry(sender, databaseManager, plugin);
             return true;
         } else if (args[0].equalsIgnoreCase("unclaim")) {
             new UnclaimCountry(sender, databaseManager);

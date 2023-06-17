@@ -1,0 +1,5 @@
+allow-nether-claim: FALSE
+allow-ender-claim: FALSE
+allow-otherworld-claim: FALSE
+
+default-world: "world"

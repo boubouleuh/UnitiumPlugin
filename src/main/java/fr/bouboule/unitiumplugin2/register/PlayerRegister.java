@@ -20,7 +20,7 @@ public class PlayerRegister implements Listener {
         // Vérifier si le joueur est déjà dans la table Players
         if (!databaseManager.playerExists(playerUUID)) {
             // Ajouter le joueur à la table Players avec les infos par défaut
-            databaseManager.addPlayer(playerUUID, playerName, 0, 0); //change rankid here later
+            databaseManager.addPlayer(playerUUID, playerName, 0, 0); //todo change rankid here later
         }
     }
 }

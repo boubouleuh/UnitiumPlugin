@@ -27,7 +27,11 @@ public final class UnitiumPlugin2 extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        saveDefaultConfig();
+        File configFile = new File(this.getDataFolder() + "/config.yml");
+        if(!configFile.exists())
+        {
+            saveDefaultConfig();
+        }
         tableCreator.createTables();
         // Plugin startup logic
 
