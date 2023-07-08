@@ -22,6 +22,8 @@ public class TableCreator {
         createCountryRanksTable();
         createCountryPermissionsTable();
         createRelationsTable();
+        createAlliancesTable();
+        createAllianceMembersTable();
         createWarsTable();
         createClaimedChunksTable();
 
