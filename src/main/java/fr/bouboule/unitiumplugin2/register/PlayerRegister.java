@@ -4,6 +4,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
+
+import java.util.UUID;
+
 public class PlayerRegister implements Listener {
     DatabaseManager databaseManager;
 
@@ -15,7 +18,7 @@ public class PlayerRegister implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         String playerName = player.getName();
-        String playerUUID = player.getUniqueId().toString();
+        UUID playerUUID = player.getUniqueId();
 
         // Vérifier si le joueur est déjà dans la table Players
         if (!databaseManager.playerExists(playerUUID)) {

@@ -3,6 +3,7 @@ package fr.bouboule.unitiumplugin2.database;
 import fr.bouboule.unitiumplugin2.permissions.country.Perms;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
+import org.bukkit.World;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -38,6 +39,23 @@ public class DatabaseManager {
         return -1; // Retourne -1 si le pays n'est pas trouvé ou s'il y a une erreur
     }
 
+
+    public int getCountryID(UUID playerUUID) {
+        try (PreparedStatement statement = connection.prepareStatement("SELECT c.id FROM Countries c LEFT JOIN CountryPlayers cp ON c.id = cp.country_id WHERE cp.player_uuid = ? OR c.leader_uuid = ?")) {
+            statement.setString(1, playerUUID.toString());
+            statement.setString(2, playerUUID.toString());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getInt("id");
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return -1;
+    }
+
+
     public boolean playerHasCountry(UUID playerUUID) {
         String query = "SELECT COUNT(*) AS count FROM CountryPlayers WHERE player_uuid = ?";
         try (PreparedStatement statement = connection.prepareStatement(query)) {
@@ -69,6 +87,46 @@ public class DatabaseManager {
         return false; // Retourne false en cas d'erreur ou si le joueur n'a pas de pays
     }
 
+
+    public List<Integer> getAllCountryIds() {
+        List<Integer> countryIds = new ArrayList<>();
+
+        String query = "SELECT id FROM Countries";
+
+        try (Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(query)) {
+
+            while (resultSet.next()) {
+                int countryId = resultSet.getInt("id");
+                countryIds.add(countryId);
+            }
+        } catch (SQLException e) {
+            System.out.println("Failed to get all country IDs: " + e.getMessage());
+        }
+
+        return countryIds;
+    }
+
+
+    public List<String> getAllCountryNames() {
+        List<String> countries = new ArrayList<>();
+
+        String query = "SELECT name FROM Countries";
+
+        try (Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(query)) {
+
+            while (resultSet.next()) {
+                String countryName = resultSet.getString("name");
+                countries.add(countryName);
+            }
+        } catch (SQLException e) {
+            System.out.println("Failed to get all countries: " + e.getMessage());
+        }
+
+        return countries;
+    }
+
     public boolean countryExists(String countryName) {
         String query = "SELECT COUNT(*) AS count FROM Countries WHERE name = ?";
         try (PreparedStatement statement = connection.prepareStatement(query)) {
@@ -98,6 +156,45 @@ public class DatabaseManager {
         }
     }
 
+    public int getCountryOfChunk(Chunk chunk) {
+        String query = "SELECT country_id FROM ClaimedChunks WHERE world_name = ? AND x = ? AND z = ?";
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setString(1, chunk.getWorld().getName());
+            statement.setInt(2, chunk.getX());
+            statement.setInt(3, chunk.getZ());
+            ResultSet resultSet = statement.executeQuery();
+            if (resultSet.next()) {
+                return resultSet.getInt("country_id");
+            }
+        } catch (SQLException e) {
+            System.out.println("Failed to get country of chunk: " + e.getMessage());
+        }
+        return -1; // Valeur par défaut si le pays n'est pas trouvé ou s'il y a une erreur
+    }
+
+    public List<Chunk> getAllClaimedChunks() {
+        List<Chunk> claimedChunks = new ArrayList<>();
+
+        String query = "SELECT world_name, x, z FROM ClaimedChunks";
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            ResultSet resultSet = statement.executeQuery();
+            while (resultSet.next()) {
+                String worldName = resultSet.getString("world_name");
+                int chunkX = resultSet.getInt("x");
+                int chunkZ = resultSet.getInt("z");
+
+                World world = Bukkit.getWorld(worldName);
+                if (world != null) {
+                    Chunk chunk = world.getChunkAt(chunkX, chunkZ);
+                    claimedChunks.add(chunk);
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Failed to get all claimed chunks: " + e.getMessage());
+        }
+
+        return claimedChunks;
+    }
     public void addClaimedChunk(int countryId, Chunk chunk) {
         String query = "INSERT INTO ClaimedChunks (country_id, world_name, x, z) VALUES (?, ?, ?, ?)";
         try (PreparedStatement statement = connection.prepareStatement(query)) {
@@ -165,6 +262,19 @@ public class DatabaseManager {
         try (PreparedStatement statement = connection.prepareStatement("SELECT c.name FROM Countries c LEFT JOIN CountryPlayers cp ON c.id = cp.country_id WHERE cp.player_uuid = ? OR c.leader_uuid = ?")) {
             statement.setString(1, playerUUID.toString());
             statement.setString(2, playerUUID.toString());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getString("name");
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+    public String getCountryName(int countryID) {
+        try (PreparedStatement statement = connection.prepareStatement("SELECT name FROM Countries WHERE id = ?")) {
+            statement.setInt(1, countryID);
             try (ResultSet resultSet = statement.executeQuery()) {
                 if (resultSet.next()) {
                     return resultSet.getString("name");
@@ -392,6 +502,23 @@ public class DatabaseManager {
 
     public boolean isPlayerInCountry(UUID playerUUID, int countryID) {
         String query = "SELECT COUNT(*) FROM CountryPlayers WHERE player_uuid = ? AND country_id = ?";
+        int count = 0;
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setString(1, playerUUID.toString());
+            statement.setInt(2, countryID);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    count = resultSet.getInt(1);
+
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Failed to check if player is in country: " + e.getMessage());
+        }
+
+        // Si le joueur n'est pas trouvé dans CountryPlayers, recherche dans Countries
+        query = "SELECT COUNT(*) FROM Countries WHERE leader_uuid = ? AND id = ?";
 
         try (PreparedStatement statement = connection.prepareStatement(query)) {
             statement.setString(1, playerUUID.toString());
@@ -399,15 +526,14 @@ public class DatabaseManager {
 
             try (ResultSet resultSet = statement.executeQuery()) {
                 if (resultSet.next()) {
-                    int count = resultSet.getInt(1);
-                    return count > 0;
+                    count = resultSet.getInt(1);
+
                 }
             }
         } catch (SQLException e) {
-            System.out.println("Failed to check if player is in country: " + e.getMessage());
+            System.out.println("Failed to check if player is in country (from Countries table): " + e.getMessage());
         }
-
-        return false;
+        return count > 0;
     }
 
     public String getPlayerCountryRank(UUID playerUUID, int countryID) {
@@ -568,11 +694,11 @@ public class DatabaseManager {
         return null; // Retourne null si le joueur n'est pas trouvé ou s'il y a une erreur
     }
 
-    public void updatePlayerBalance(String playerUUID, double balance) {
+    public void updatePlayerBalance(UUID playerUUID, double balance) {
         String query = "UPDATE Players SET balance = ? WHERE uuid = ?";
         try (PreparedStatement statement = connection.prepareStatement(query)) {
             statement.setDouble(1, balance);
-            statement.setString(2, playerUUID);
+            statement.setString(2, playerUUID.toString());
             statement.executeUpdate();
             System.out.println("Player balance updated successfully.");
         } catch (SQLException e) {
@@ -580,10 +706,53 @@ public class DatabaseManager {
         }
     }
 
-    public boolean playerExists(String playerUUID) {
+    public void removePlayerBalance(UUID playerUUID, double amount) {
+        String query = "UPDATE Players SET balance = balance - ? WHERE uuid = ?";
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setDouble(1, amount);
+            statement.setString(2, playerUUID.toString());
+            statement.executeUpdate();
+            System.out.println("Player balance updated successfully.");
+        } catch (SQLException e) {
+            System.out.println("Failed to update player balance: " + e.getMessage());
+        }
+    }
+
+    public double getPlayerBalance(UUID playerUUID) {
+        String query = "SELECT balance FROM Players WHERE uuid = ?";
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setString(1, playerUUID.toString());
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getDouble("balance");
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Failed to get player balance: " + e.getMessage());
+        }
+
+        return 0.0; // Retourne 0 par défaut si le solde n'a pas été trouvé ou s'il y a eu une erreur
+    }
+
+    public void addPlayerBalance(UUID playerUUID, double amount) {
+        double currentBalance = getPlayerBalance(playerUUID);
+        double newBalance = currentBalance + amount;
+
+        String query = "UPDATE Players SET balance = ? WHERE uuid = ?";
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setDouble(1, newBalance);
+            statement.setString(2, playerUUID.toString());
+            statement.executeUpdate();
+            System.out.println("Player balance updated successfully. New balance: " + newBalance);
+        } catch (SQLException e) {
+            System.out.println("Failed to update player balance: " + e.getMessage());
+        }
+    }
+    public boolean playerExists(UUID playerUUID) {
         String query = "SELECT COUNT(*) AS count FROM Players WHERE uuid = ?";
         try (PreparedStatement statement = connection.prepareStatement(query)) {
-            statement.setString(1, playerUUID);
+            statement.setString(1, playerUUID.toString());
             try (ResultSet resultSet = statement.executeQuery()) {
                 if (resultSet.next()) {
                     int count = resultSet.getInt("count");
@@ -596,10 +765,10 @@ public class DatabaseManager {
         return false;
     }
 
-    public void addPlayer(String playerUUID, String playerName, double balance, int rank_id) {
+    public void addPlayer(UUID playerUUID, String playerName, double balance, int rank_id) {
         String query = "INSERT INTO Players (uuid, name, balance, rank_id) VALUES (?, ?, ?, ?)";
         try (PreparedStatement statement = connection.prepareStatement(query)) {
-            statement.setString(1, playerUUID);
+            statement.setString(1, playerUUID.toString());
             statement.setString(2, playerName);
             statement.setDouble(3, balance);
             statement.setInt(4, rank_id);
@@ -610,6 +779,105 @@ public class DatabaseManager {
         }
     }
 
+    public void addRelation(int countryId1, int countryId2, String status) {
+        String query = "INSERT INTO Relations (country_id1, country_id2, status) VALUES (?, ?, ?)";
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setInt(1, countryId1);
+            statement.setInt(2, countryId2);
+            statement.setString(3, status);
+            statement.executeUpdate();
+            System.out.println("Relation added to Relations table successfully.");
+        } catch (SQLException e) {
+            System.out.println("Failed to add relation to Relations table: " + e.getMessage());
+        }
+    }
+
+    public void addAlliance(int founderCountryId, String allianceName) {
+        String query = "INSERT INTO Alliances (founder_country_id, name) VALUES (?, ?)";
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setInt(1, founderCountryId);
+            statement.setString(2, allianceName);
+            statement.executeUpdate();
+            System.out.println("Alliance added to Alliances table successfully.");
+        } catch (SQLException e) {
+            System.out.println("Failed to add alliance to Alliances table: " + e.getMessage());
+        }
+    }
+
+    public List<Integer> getAlliancesCreatedByCountry(int countryId) {
+        List<Integer> allianceIds = new ArrayList<>();
+        String query = "SELECT id FROM Alliances WHERE founder_country_id = ?";
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setInt(1, countryId);
+            ResultSet resultSet = statement.executeQuery();
+            while (resultSet.next()) {
+                int allianceId = resultSet.getInt("id");
+                allianceIds.add(allianceId);
+            }
+        } catch (SQLException e) {
+            System.out.println("Failed to retrieve alliances created by country from Alliances table: " + e.getMessage());
+        }
+        return allianceIds;
+    }
+
+    public boolean allianceExists(String allianceName) {
+        String query = "SELECT COUNT(*) AS count FROM Alliances WHERE name = ?";
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setString(1, allianceName);
+            ResultSet resultSet = statement.executeQuery();
+            if (resultSet.next()) {
+                int count = resultSet.getInt("count");
+                return count > 0;
+            }
+        } catch (SQLException e) {
+            System.out.println("Failed to check alliance existence in Alliances table: " + e.getMessage());
+        }
+        return false;
+    }
+
+    public int getAllianceIdByName(String allianceName) {
+        String query = "SELECT id FROM Alliances WHERE name = ?";
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setString(1, allianceName);
+            ResultSet resultSet = statement.executeQuery();
+            if (resultSet.next()) {
+                return resultSet.getInt("id");
+            }
+        } catch (SQLException e) {
+            System.out.println("Failed to retrieve alliance ID by name from Alliances table: " + e.getMessage());
+        }
+        return -1; // Valeur de retour par défaut si l'alliance n'est pas trouvée ou en cas d'erreur
+    }
+
+
+    //TODO Faire un systeme qui met automatiquement en ennemi toute les alliances du pays cible contre le pays ayant envoyer la commande
+
+    public void addAllianceMember(int allianceId, int countryId) {
+        String query = "INSERT INTO AllianceMembers (alliance_id, country_id) VALUES (?, ?)";
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setInt(1, allianceId);
+            statement.setInt(2, countryId);
+            statement.executeUpdate();
+            System.out.println("Alliance member added to AllianceMembers table successfully.");
+        } catch (SQLException e) {
+            System.out.println("Failed to add alliance member to AllianceMembers table: " + e.getMessage());
+        }
+    }
+
+    public List<Integer> getAllianceMembers(int allianceId) {
+        List<Integer> members = new ArrayList<>();
+        String query = "SELECT country_id FROM AllianceMembers WHERE alliance_id = ?";
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setInt(1, allianceId);
+            ResultSet resultSet = statement.executeQuery();
+            while (resultSet.next()) {
+                members.add(resultSet.getInt("country_id"));
+            }
+        } catch (SQLException e) {
+            System.out.println("Failed to retrieve alliance members from AllianceMembers table: " + e.getMessage());
+        }
+        return members;
+    }
 
     // Ajoutez d'autres méthodes nécessaires pour vos opérations sur la base de données
 

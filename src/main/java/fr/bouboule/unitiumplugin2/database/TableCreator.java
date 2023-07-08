@@ -119,11 +119,11 @@ public class TableCreator {
     private void createRelationsTable() {
         String query = "CREATE TABLE IF NOT EXISTS Relations (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                "country_id1 INT UNSIGNED NOT NULL," +
-                "country_id2 INT UNSIGNED NOT NULL," +
+                "alliance_id INT UNSIGNED," +
+                "country_id INT UNSIGNED NOT NULL," +
                 "status VARCHAR(255) NOT NULL," +
-                "FOREIGN KEY (country_id1) REFERENCES Countries(id) ON DELETE CASCADE," +
-                "FOREIGN KEY (country_id2) REFERENCES Countries(id) ON DELETE CASCADE" +
+                "FOREIGN KEY (alliance_id) REFERENCES Alliances(id) ON DELETE CASCADE," +
+                "FOREIGN KEY (country_id) REFERENCES Countries(id) ON DELETE CASCADE" +
                 ")";
 
         executeQuery(query);
@@ -163,6 +163,29 @@ public class TableCreator {
                 "        (SELECT id FROM CountryRanks WHERE country_id = OLD.id); " +
                 "    DELETE FROM CountryRanks WHERE country_id = OLD.id; " +
                 "END;";
+
+        executeQuery(query);
+    }
+
+    private void createAlliancesTable() {
+        String query = "CREATE TABLE IF NOT EXISTS Alliances (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                "founder_country_id INT UNSIGNED NOT NULL," +
+                "name VARCHAR(255) NOT NULL UNIQUE," +
+                "FOREIGN KEY (founder_country_id) REFERENCES Countries(id) ON DELETE CASCADE" +
+                ")";
+
+        executeQuery(query);
+    }
+
+    private void createAllianceMembersTable() {
+        String query = "CREATE TABLE IF NOT EXISTS AllianceMembers (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                "alliance_id INT UNSIGNED NOT NULL," +
+                "country_id INT UNSIGNED NOT NULL," +
+                "FOREIGN KEY (alliance_id) REFERENCES Alliances(id) ON DELETE CASCADE," +
+                "FOREIGN KEY (country_id) REFERENCES Countries(id) ON DELETE CASCADE" +
+                ")";
 
         executeQuery(query);
     }

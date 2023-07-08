@@ -1,7 +1,7 @@
 name: UnitiumPlugin2
 version: '${project.version}'
 main: fr.bouboule.unitiumplugin2.UnitiumPlugin2
-load: STARTUP
+depend: [dynmap]
 commands:
   country:
     description: Command to manage country
@@ -12,4 +12,8 @@ commands:
     permission: command.country
     permission-message: §4You do not have permission!
     usage: §4/<command> <subcommand>
-
+  shop:
+    description: Command to use shop
+    permission: command.shop
+    permission-message: §4You do not have permission!
+    usage: §4/<command>

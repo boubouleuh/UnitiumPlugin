@@ -1,23 +1,34 @@
 package fr.bouboule.unitiumplugin2;
 
+import com.mojang.authlib.GameProfile;
 import fr.bouboule.unitiumplugin2.database.DatabaseManager;
 import net.minecraft.server.v1_12_R1.*;
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
+import org.bukkit.*;
+import org.bukkit.craftbukkit.v1_12_R1.CraftWorld;
+import org.bukkit.craftbukkit.v1_12_R1.entity.CraftEntity;
 import org.bukkit.craftbukkit.v1_12_R1.entity.CraftPlayer;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Slime;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 
 public class Tags implements Listener {
-
     private final Plugin plugin;
     private final DatabaseManager databaseManager;
 
@@ -25,6 +36,8 @@ public class Tags implements Listener {
         this.databaseManager = databaseManager;
         this.plugin = plugin;
     }
+
+
 
     public static void setPrefixTag(Player player, String prefix) {
         Scoreboard scoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
@@ -44,6 +57,7 @@ public class Tags implements Listener {
             onlinePlayer.setScoreboard(scoreboard);
         }
     }
+
 
     public static void setTabListHeaderAndFooter(Player player, String header, String footer) {
         EntityPlayer entityPlayer = ((CraftPlayer) player).getHandle();
@@ -67,6 +81,7 @@ public class Tags implements Listener {
 
         entityPlayer.playerConnection.sendPacket(packet);
     }
+
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
@@ -118,7 +133,7 @@ public class Tags implements Listener {
 
             // Mise à jour du header et du footer dans le tableau des joueurs du joueur
             setTabListHeaderAndFooter(player, finalHeader, footer);
-        }, 0L, 200L); // Exécute la tâche toutes les 10 secondes (200 ticks)
+        }, 0L, 20L);
     }
 
 }

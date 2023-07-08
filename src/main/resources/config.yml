@@ -3,3 +3,42 @@ allow-ender-claim: FALSE
 allow-otherworld-claim: FALSE
 
 default-world: "world"
+
+
+
+shop:
+  categories:
+    food:
+      icon: APPLE
+      items:
+        apple:
+          material: APPLE
+          amount: 1
+          price: 10
+          sell-price: 10
+          canSell: true
+          canBuy: true
+        bread:
+          material: BREAD
+          amount: 1
+          price: 20
+          sell-price: 10
+          canSell: true
+          canBuy: true
+    tools:
+      icon: IRON_SWORD
+      items:
+        iron_sword:
+          material: IRON_SWORD
+          amount: 1
+          price: 50
+          sell-price: 10
+          canSell: true
+          canBuy: true
+        diamond_pickaxe:
+          material: DIAMOND_PICKAXE
+          amount: 1
+          price: 100
+          sell-price: 10
+          canSell: false
+          canBuy: true
